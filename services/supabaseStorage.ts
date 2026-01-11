@@ -31,11 +31,8 @@ export const loadData = async (): Promise<AppData> => {
       value: a.value
     }));
 
-    // 如果数据库为空，初始化数据
-    if (members.length === 0 || projects.length === 0) {
-      return await initializeData();
-    }
-
+    // 不再自动初始化数据 - 用户可以完全控制数据
+    // 如果数据库为空，返回空数据，由用户自行添加
     return { members, projects, allocations };
   } catch (error) {
     console.error('加载数据失败:', error);
@@ -85,28 +82,64 @@ const initializeData = async (): Promise<AppData> => {
 // 保存成员和项目（仅在设置页面修改时使用）
 export const saveData = async (data: AppData): Promise<void> => {
   try {
-    // 更新成员
-    await Promise.all(
-      data.members.map(member =>
-        supabase
-          .from('members')
-          .upsert({ id: member.id, name: member.name, role: member.role })
-      )
-    );
+    // 1. 获取数据库中现有的成员和项目
+    const [existingMembers, existingProjects] = await Promise.all([
+      supabase.from('members').select('id'),
+      supabase.from('projects').select('id')
+    ]);
 
-    // 更新项目
-    await Promise.all(
-      data.projects.map(project =>
-        supabase
-          .from('projects')
-          .upsert({
-            id: project.id,
-            name: project.name,
-            status: project.status,
-            project_status: project.projectStatus
-          })
+    if (existingMembers.error) throw existingMembers.error;
+    if (existingProjects.error) throw existingProjects.error;
+
+    const existingMemberIds = new Set(existingMembers.data?.map(m => m.id) || []);
+    const existingProjectIds = new Set(existingProjects.data?.map(p => p.id) || []);
+    const newMemberIds = new Set(data.members.map(m => m.id));
+    const newProjectIds = new Set(data.projects.map(p => p.id));
+
+    // 2. 删除数据库中存在但新数据中不存在的成员
+    const membersToDelete = [...existingMemberIds].filter(id => !newMemberIds.has(id));
+    if (membersToDelete.length > 0) {
+      const { error: deleteMembersError } = await supabase
+        .from('members')
+        .delete()
+        .in('id', membersToDelete);
+      if (deleteMembersError) throw deleteMembersError;
+    }
+
+    // 3. 删除数据库中存在但新数据中不存在的项目
+    const projectsToDelete = [...existingProjectIds].filter(id => !newProjectIds.has(id));
+    if (projectsToDelete.length > 0) {
+      const { error: deleteProjectsError } = await supabase
+        .from('projects')
+        .delete()
+        .in('id', projectsToDelete);
+      if (deleteProjectsError) throw deleteProjectsError;
+    }
+
+    // 4. Upsert 新的成员和项目
+    await Promise.all([
+      // 更新成员
+      Promise.all(
+        data.members.map(member =>
+          supabase
+            .from('members')
+            .upsert({ id: member.id, name: member.name, role: member.role })
+        )
+      ),
+      // 更新项目
+      Promise.all(
+        data.projects.map(project =>
+          supabase
+            .from('projects')
+            .upsert({
+              id: project.id,
+              name: project.name,
+              status: project.status,
+              project_status: project.projectStatus
+            })
+        )
       )
-    );
+    ]);
   } catch (error) {
     console.error('保存数据失败:', error);
     throw error;
@@ -204,35 +237,34 @@ const saveAllocationToDatabase = async (
   }
 };
 
-// 删除项目的某个成员的所有分配（乐观更新版本）
+// 删除项目的某个成员的所有分配（同步版本，确保数据库删除成功）
 export const deleteProjectRow = async (
   currentData: AppData,
   memberId: string,
   projectId: string
 ): Promise<AppData> => {
-  // 先在本地更新（乐观更新）
-  const optimisticData = {
-    ...currentData,
-    allocations: currentData.allocations.filter(
-      a => !(a.memberId === memberId && a.projectId === projectId)
-    )
-  };
+  try {
+    // 先删除数据库中的数据（等待完成）
+    const { error } = await supabase
+      .from('allocations')
+      .delete()
+      .eq('member_id', memberId)
+      .eq('project_id', projectId);
 
-  // 在后台异步保存到数据库（不等待完成）
-  supabase
-    .from('allocations')
-    .delete()
-    .eq('member_id', memberId)
-    .eq('project_id', projectId)
-    .then(({ error }) => {
-      if (error) {
-        console.error('删除分配失败:', error);
-      }
-    })
-    .catch(error => {
+    if (error) {
       console.error('删除分配失败:', error);
-    });
+      throw error;
+    }
 
-  // 立即返回更新后的数据
-  return optimisticData;
+    // 数据库删除成功后，更新本地数据
+    return {
+      ...currentData,
+      allocations: currentData.allocations.filter(
+        a => !(a.memberId === memberId && a.projectId === projectId)
+      )
+    };
+  } catch (error) {
+    console.error('删除分配失败:', error);
+    throw error;
+  }
 };
