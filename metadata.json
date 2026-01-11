@@ -1,0 +1,5 @@
+{
+  "name": "TeamResourcePlanner",
+  "description": "A resource management dashboard for database teams to track project allocation, saturation, and availability over a rolling 13-week period.",
+  "requestFramePermissions": []
+}

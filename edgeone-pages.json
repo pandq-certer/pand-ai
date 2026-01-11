@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "name": "team-resource-planner",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install",
+  "env": {
+    "GEMINI_API_KEY": "@gemini-api-key"
+  }
+}
