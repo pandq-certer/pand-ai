@@ -1,20 +1,270 @@
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+
+# 🗃️ 华北数据库团队资源规划系统
+
+**Team Resource Planner - Database Team**
+
+一个现代化的团队资源管理系统，帮助团队负责人高效规划和分配项目资源
+
+[React](https://react.dev/) · [TypeScript](https://www.typescriptlang.org/) · [Supabase](https://supabase.com/) · [Vite](https://vitejs.dev/)
+
 </div>
 
-# Run and deploy your AI Studio app
+---
 
-This contains everything you need to run your app locally.
+## 📖 项目简介
 
-View your app in AI Studio: https://ai.studio/apps/drive/1_kQmoBtNLi0ya6MGwGGHUszpt8pKFA-V
+华北数据库团队资源规划系统是一个基于 Web 的资源管理工具，专为技术团队设计。系统提供直观的资源分配矩阵、可视化数据看板和灵活的配置管理，帮助团队优化资源配置，提升协作效率。
 
-## Run Locally
+### ✨ 核心特性
 
-**Prerequisites:**  Node.js
+- 📊 **资源分配矩阵** - 直观展示团队成员在各项目上的资源投入
+- 📈 **数据可视化看板** - 多维度分析资源使用情况和趋势
+- ⚙️ **灵活配置管理** - 动态管理团队成员和项目信息
+- 💾 **云端数据持久化** - 基于 Supabase 的云端存储，支持多设备访问
+- 🎨 **热力图可视化** - 颜色编码快速识别资源投入程度
+- 🔄 **实时同步** - 修改立即保存，数据实时同步到云端
+- 📱 **响应式设计** - 支持桌面端和移动端访问
 
+---
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 🎯 功能预览
+
+### 1. 资源分配矩阵
+
+- 按周展示未来 13 周的资源分配
+- 热力图颜色编码（低投入 → 高投入）
+- 支持快速编辑和删除
+- 自动识别资源冲突（过度分配）
+
+### 2. 数据看板
+
+- 总体统计卡片（成员数、项目数、分配数）
+- 资源分配趋势图（折线图）
+- 成员工作负载分布（柱状图）
+- 项目资源占比（饼图）
+- 资源利用率分析
+
+### 3. 系统配置
+
+- 成员管理：添加、编辑、删除团队成员
+- 项目管理：添加、编辑、删除项目
+- 状态管理：进行中、已结项、归档
+- 实时保存到数据库
+
+---
+
+## 🚀 快速开始
+
+### 环境要求
+
+- Node.js >= 18.0.0
+- npm >= 9.0.0
+- Supabase 项目（免费版即可）
+
+### 安装步骤
+
+#### 1. 克隆项目
+
+```bash
+git clone https://github.com/pandq-certer/pand-ai.git
+cd pand-ai
+```
+
+#### 2. 安装依赖
+
+```bash
+npm install
+```
+
+#### 3. 配置环境变量
+
+复制环境变量模板：
+```bash
+cp .env.example .env.local
+```
+
+编辑 `.env.local` 文件，填入你的 Supabase 配置：
+
+```bash
+# Supabase 配置
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+**获取 Supabase 配置**：
+1. 登录 [Supabase Dashboard](https://supabase.com/dashboard)
+2. 进入你的项目
+3. 点击 Settings → API
+4. 复制 Project URL 和 anon public key
+
+#### 4. 初始化数据库
+
+在 Supabase SQL Editor 中执行 `supabase/schema.sql` 的内容，创建数据库表。
+
+或者执行数据恢复脚本（包含示例数据）：
+```bash
+# 在 Supabase SQL Editor 中执行
+复制 supabase/restore_data.sql 的内容 → 粘贴 → Run
+```
+
+#### 5. 启动开发服务器
+
+```bash
+npm run dev
+```
+
+访问 http://localhost:3000 查看应用。
+
+---
+
+## 📂 项目结构
+
+```
+team-resource-planner/
+├── components/              # React 组件
+│   ├── Dashboard.tsx       # 数据看板
+│   ├── Matrix.tsx          # 资源分配矩阵
+│   └── Settings.tsx        # 系统配置
+├── services/               # 业务逻辑层
+│   ├── supabaseStorage.ts  # Supabase 存储服务
+│   └── storage.ts          # LocalStorage 存储（备份）
+├── supabase/               # Supabase 配置
+│   ├── schema.sql          # 数据库初始化脚本
+│   └── restore_data.sql    # 数据恢复脚本
+├── App.tsx                 # 主应用组件
+├── supabaseClient.ts       # Supabase 客户端
+├── types.ts                # TypeScript 类型定义
+├── utils.ts                # 工具函数
+├── vite.config.ts          # Vite 配置
+├── REQUIREMENTS.md         # 需求文档
+├── TECHNICAL.md            # 技术文档
+├── DEPLOYMENT_GUIDE.md     # 部署指南
+└── README.md               # 项目说明（本文件）
+```
+
+---
+
+## 🔧 开发指南
+
+### 可用脚本
+
+```bash
+# 启动开发服务器
+npm run dev
+
+# 构建生产版本
+npm run build
+
+# 预览生产构建
+npm run preview
+```
+
+### 技术栈
+
+| 技术 | 版本 | 说明 |
+|------|------|------|
+| React | 19.2.3 | UI 框架 |
+| TypeScript | 5.8.2 | 类型安全 |
+| Vite | 6.2.0 | 构建工具 |
+| Supabase | Latest | 云端数据库 |
+| Recharts | 3.6.0 | 图表库 |
+| Lucide React | 0.562.0 | 图标库 |
+
+### 代码规范
+
+- 组件命名：PascalCase（如 `Dashboard.tsx`）
+- 函数命名：camelCase（如 `loadData`）
+- 常量命名：UPPER_SNAKE_CASE（如 `API_KEY`）
+- 一个文件一个组件
+- 添加必要的注释和类型定义
+
+---
+
+## 📦 部署
+
+### EdgeOne Pages（推荐）
+
+1. 构建项目：
+```bash
+npm run build
+```
+
+2. 上传 `dist` 目录到 EdgeOne Pages
+
+3. 配置环境变量：
+```
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### 其他平台
+
+支持部署到任何静态托管平台：
+- Vercel
+- Netlify
+- GitHub Pages
+- 自有服务器（Nginx）
+
+详细部署指南请参考 [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
+
+---
+
+## 📚 文档
+
+- [需求文档](REQUIREMENTS.md) - 完整的功能需求和非功能需求
+- [技术文档](TECHNICAL.md) - 技术架构、数据库设计、API 文档
+- [部署指南](DEPLOYMENT_GUIDE.md) - 详细的部署步骤和故障排查
+
+---
+
+## 🤝 贡献
+
+欢迎贡献代码、报告 Bug 或提出新功能建议！
+
+1. Fork 本仓库
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'feat: Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+---
+
+## 📝 许可证
+
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
+
+---
+
+## 👥 作者
+
+华北数据库团队
+
+---
+
+## 🙏 致谢
+
+- [React](https://react.dev/) - UI 框架
+- [Supabase](https://supabase.com/) - 云端 BaaS 平台
+- [Vite](https://vitejs.dev/) - 下一代前端构建工具
+- [Recharts](https://recharts.org/) - React 图表库
+- [Lucide](https://lucide.dev/) - 图标库
+
+---
+
+## 📮 联系方式
+
+如有问题或建议，请通过以下方式联系：
+
+- 提交 [Issue](https://github.com/pandq-certer/pand-ai/issues)
+- 发送邮件到团队邮箱
+
+---
+
+<div align="center">
+
+**如果这个项目对你有帮助，请给一个 ⭐️ Star 支持一下！**
+
+Made with ❤️ by 华北数据库团队
+
+</div>
