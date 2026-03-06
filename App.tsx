@@ -1,12 +1,40 @@
 import React, { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { loadData, saveData, updateAllocation, deleteProjectRow } from './services/supabaseStorage';
 import { AppData, ViewState } from './types';
 import Dashboard from './components/Dashboard';
 import Matrix from './components/Matrix';
 import Settings from './components/Settings';
-import { LayoutDashboard, Grid, Settings as SettingsIcon, Database } from 'lucide-react';
+import Login from './components/Login';
+import { LayoutDashboard, Grid, Settings as SettingsIcon, Database, LogOut, User } from 'lucide-react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-const App: React.FC = () => {
+// Protected Route Component
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// Main Application Component
+const MainApp: React.FC = () => {
+  const { user, signOut } = useAuth();
   const [data, setData] = useState<AppData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,6 +168,26 @@ const App: React.FC = () => {
           </button>
         </nav>
 
+        {/* User Info & Logout */}
+        <div className="p-4 border-t border-slate-800 space-y-3">
+          <div className="flex items-center gap-3 px-2 py-2 rounded-lg bg-slate-800/50">
+            <div className="bg-indigo-500 p-2 rounded-lg">
+              <User className="w-4 h-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{user?.email}</p>
+              <p className="text-xs text-slate-400">已登录</p>
+            </div>
+          </div>
+          <button
+            onClick={signOut}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="text-sm font-medium">退出登录</span>
+          </button>
+        </div>
+
         <div className="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
           云端数据库 (Supabase) <br/>
           v2.0.0
@@ -171,6 +219,27 @@ const App: React.FC = () => {
         </div>
       </main>
     </div>
+  );
+};
+
+// Root App Component with Router
+const App: React.FC = () => {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <MainApp />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 };
 
