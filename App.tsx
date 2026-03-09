@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { loadData, saveData, updateAllocation, deleteProjectRow } from './services/supabaseStorage';
 import { AppData, ViewState } from './types';
@@ -8,6 +8,7 @@ import Settings from './components/Settings';
 import Login from './components/Login';
 import { LayoutDashboard, Grid, Settings as SettingsIcon, Database, LogOut, User } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { createScheduler, getNextSendDescription } from './utils/scheduler';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -39,6 +40,8 @@ const MainApp: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<ViewState>('matrix');
+  const schedulerDashboardRef = useRef<HTMLDivElement>(null);
+  const schedulerStopRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     // 从 Supabase 加载数据
@@ -58,6 +61,41 @@ const MainApp: React.FC = () => {
 
     fetchData();
   }, []);
+
+  // 初始化或更新定时调度器
+  useEffect(() => {
+    if (data && data.emailConfig?.enabled) {
+      console.log('初始化邮件定时调度器...');
+
+      // 停止之前的调度器
+      if (schedulerStopRef.current) {
+        schedulerStopRef.current();
+        schedulerStopRef.current = null;
+      }
+
+      // 创建新的调度器
+      const stopScheduler = createScheduler(
+        data.emailConfig,
+        data,
+        (newConfig) => {
+          setData({ ...data, emailConfig: newConfig });
+        },
+        () => schedulerDashboardRef
+      );
+
+      schedulerStopRef.current = stopScheduler;
+
+      console.log('定时调度器已启动:', getNextSendDescription(data.emailConfig));
+    }
+
+    // 清理函数
+    return () => {
+      if (schedulerStopRef.current) {
+        schedulerStopRef.current();
+        schedulerStopRef.current = null;
+      }
+    };
+  }, [data]);
 
   const handleAllocationUpdate = async (memberId: string, projectId: string, week: string, val: number) => {
     if (!data) return;
@@ -218,6 +256,15 @@ const MainApp: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* 隐藏的 Dashboard 用于定时发送 */}
+      {data?.emailConfig?.enabled && (
+        <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '1200px', height: '800px', overflow: 'auto' }}>
+          <div ref={schedulerDashboardRef} id="dashboard-content-scheduler">
+            <Dashboard data={data} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

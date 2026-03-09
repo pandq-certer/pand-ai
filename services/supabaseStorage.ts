@@ -1,15 +1,18 @@
 import { supabase } from '../supabaseClient';
-import { AppData, Member, Project, Allocation } from '../types';
+import { AppData, Member, Project, Allocation, EmailConfig, EmailRecipient } from '../types';
 import { generateId, getNext13Weeks } from '../utils';
 
 // 从数据库加载所有数据
 export const loadData = async (): Promise<AppData> => {
   try {
     // 并行加载所有数据
-    const [membersResult, projectsResult, allocationsResult] = await Promise.all([
+    const [membersResult, projectsResult, allocationsResult, emailConfigResult, customEmailsResult, emailRecipientsResult] = await Promise.all([
       supabase.from('members').select('*'),
       supabase.from('projects').select('*'),
-      supabase.from('allocations').select('*')
+      supabase.from('allocations').select('*'),
+      supabase.from('email_configs').select('*').single(),
+      supabase.from('custom_emails').select('*'),
+      supabase.from('email_recipients').select('*')
     ]);
 
     if (membersResult.error) throw membersResult.error;
@@ -31,9 +34,31 @@ export const loadData = async (): Promise<AppData> => {
       value: a.value
     }));
 
+    // 加载邮件配置
+    let emailConfig: EmailConfig | undefined = undefined;
+    if (emailConfigResult.data) {
+      const recipients: EmailRecipient[] = (emailRecipientsResult.data || []).map(r => ({
+        memberId: r.member_id,
+        enabled: r.enabled
+      }));
+
+      const customEmails: string[] = (customEmailsResult.data || []).map(e => e.email);
+
+      emailConfig = {
+        enabled: emailConfigResult.data.enabled,
+        recipients,
+        customEmails,
+        frequency: emailConfigResult.data.frequency || 'weekly',
+        scheduleTime: emailConfigResult.data.schedule_time,
+        scheduleDayOfWeek: emailConfigResult.data.schedule_day_of_week,
+        scheduleDayOfMonth: emailConfigResult.data.schedule_day_of_month,
+        lastSent: emailConfigResult.data.last_sent
+      };
+    }
+
     // 不再自动初始化数据 - 用户可以完全控制数据
     // 如果数据库为空，返回空数据，由用户自行添加
-    return { members, projects, allocations };
+    return { members, projects, allocations, emailConfig };
   } catch (error) {
     console.error('加载数据失败:', error);
     throw error;
@@ -140,8 +165,96 @@ export const saveData = async (data: AppData): Promise<void> => {
         )
       )
     ]);
+
+    // 5. 保存邮件配置
+    if (data.emailConfig) {
+      await saveEmailConfig(data.emailConfig);
+    }
   } catch (error) {
     console.error('保存数据失败:', error);
+    throw error;
+  }
+};
+
+// 保存邮件配置
+const saveEmailConfig = async (emailConfig: EmailConfig): Promise<void> => {
+  try {
+    // 保存主配置（包括新的频率字段）
+    await supabase
+      .from('email_configs')
+      .upsert({
+        id: 'default',
+        enabled: emailConfig.enabled,
+        frequency: emailConfig.frequency,
+        schedule_time: emailConfig.scheduleTime,
+        schedule_day_of_week: emailConfig.scheduleDayOfWeek,
+        schedule_day_of_month: emailConfig.scheduleDayOfMonth,
+        last_sent: emailConfig.lastSent
+      });
+
+    // 获取现有的自定义邮箱
+    const { data: existingCustomEmails } = await supabase
+      .from('custom_emails')
+      .select('*');
+
+    const existingEmailSet = new Set(existingCustomEmails?.map(e => e.email) || []);
+
+    // 删除不再存在的邮箱
+    const emailsToDelete = existingCustomEmails
+      ?.filter(e => !emailConfig.customEmails.includes(e.email))
+      .map(e => e.id) || [];
+
+    if (emailsToDelete.length > 0) {
+      await supabase
+        .from('custom_emails')
+        .delete()
+        .in('id', emailsToDelete);
+    }
+
+    // 添加新的自定义邮箱
+    const newEmails = emailConfig.customEmails.filter(email => !existingEmailSet.has(email));
+    for (const email of newEmails) {
+      await supabase
+        .from('custom_emails')
+        .insert({
+          id: generateId(),
+          email: email
+        });
+    }
+
+    // 获取现有的收件人配置
+    const { data: existingRecipients } = await supabase
+      .from('email_recipients')
+      .select('*');
+
+    const existingRecipientMap = new Map(
+      existingRecipients?.map(r => [r.member_id, r]) || []
+    );
+
+    // 更新或插入收件人配置
+    for (const recipient of emailConfig.recipients) {
+      await supabase
+        .from('email_recipients')
+        .upsert({
+          id: existingRecipientMap.get(recipient.memberId)?.id || generateId(),
+          member_id: recipient.memberId,
+          enabled: recipient.enabled
+        });
+    }
+
+    // 删除不再存在的收件人配置
+    const recipientsToDelete = existingRecipients
+      ?.filter(r => !emailConfig.recipients.find(rec => rec.memberId === r.member_id))
+      .map(r => r.id) || [];
+
+    if (recipientsToDelete.length > 0) {
+      await supabase
+        .from('email_recipients')
+        .delete()
+        .in('id', recipientsToDelete);
+    }
+  } catch (error) {
+    console.error('保存邮件配置失败:', error);
     throw error;
   }
 };

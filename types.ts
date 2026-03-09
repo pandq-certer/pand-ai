@@ -2,6 +2,7 @@ export interface Member {
   id: string;
   name: string;
   role: string;
+  email?: string; // 成员邮箱（可选）
 }
 
 export interface Project {
@@ -19,10 +20,29 @@ export interface Allocation {
   value: number; // 0.0 to 1.0+
 }
 
+export interface EmailRecipient {
+  memberId: string;
+  enabled: boolean;
+}
+
+export type ScheduleFrequency = 'daily' | 'weekly' | 'monthly';
+
+export interface EmailConfig {
+  enabled: boolean;
+  recipients: EmailRecipient[]; // 接收邮件的成员列表
+  customEmails: string[]; // 自定义邮箱地址
+  frequency: ScheduleFrequency; // 发送频率：daily(每天)、weekly(每周)、monthly(每月)
+  scheduleTime: string; // 定时发送时间，格式：HH:MM
+  scheduleDayOfWeek?: number; // 当 frequency 为 weekly 时，指定星期几（0=周日，1=周一，...，6=周六）
+  scheduleDayOfMonth?: number; // 当 frequency 为 monthly 时，指定每月的第几天（1-31）
+  lastSent: string | null; // 上次发送时间
+}
+
 export interface AppData {
   members: Member[];
   projects: Project[];
   allocations: Allocation[];
+  emailConfig?: EmailConfig; // 邮件配置（可选，向后兼容）
 }
 
 export type ViewState = 'dashboard' | 'matrix' | 'settings';

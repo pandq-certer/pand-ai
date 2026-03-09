@@ -344,7 +344,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
   };
 
   return (
-    <div className="space-y-6" ref={dashboardRef}>
+    <div className="space-y-6" id="dashboard-content" ref={dashboardRef}>
       {/* Header with Export Buttons */}
       <div className="flex justify-between items-center">
         <div>
