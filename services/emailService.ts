@@ -225,7 +225,7 @@ export async function sendDashboardReport(
   // 准备邮件负载 - 图片作为附件发送
   const payload: EmailPayload = {
     to: validEmails,
-    subject: `团队资源规划报告 - ${new Date().toLocaleDateString('zh-CN')}`,
+    subject: `华北数据库团队资源规划报告 - ${new Date().toLocaleDateString('zh-CN')}`,
     html: htmlContent,
     attachments: [
       {

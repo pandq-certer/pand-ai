@@ -206,7 +206,7 @@ export function buildProjectManagerEmail(data: AppData): string {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>团队资源规划报告</title>
+      <title>华北数据库团队资源规划报告</title>
       <style>
         body {
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -349,7 +349,7 @@ export function buildProjectManagerEmail(data: AppData): string {
       <div class="container">
         <!-- Header -->
         <div class="header">
-          <h1>📊 团队资源规划报告</h1>
+          <h1>📊 华北数据库团队资源规划报告</h1>
           <p>生成时间: ${new Date().toLocaleString('zh-CN')}</p>
         </div>
 
