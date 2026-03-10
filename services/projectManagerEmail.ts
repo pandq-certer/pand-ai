@@ -433,8 +433,7 @@ export function buildProjectManagerEmail(data: AppData): string {
         <!-- Footer -->
         <div class="footer">
           <p>📧 本邮件由团队资源管理系统自动发送</p>
-          <p>如有疑问，请联系系统管理员</p>
-          <p style="margin-top: 10px;">⚠️ 请参考附件查看详细的资源分配图表</p>
+          <p>如有疑问，请联系 <strong>潘大全</strong> (<a href="mailto:pandq@chinacscs.com">pandq@chinacscs.com</a>)</p>
         </div>
       </div>
     </body>
