@@ -45,6 +45,6 @@ export interface AppData {
   emailConfig?: EmailConfig; // 邮件配置（可选，向后兼容）
 }
 
-export type ViewState = 'dashboard' | 'matrix' | 'settings';
+export type ViewState = 'dashboard' | 'matrix' | 'settings' | 'terminology';
 
 export const WEEK_COUNT = 4; // 改为4周（1个月）

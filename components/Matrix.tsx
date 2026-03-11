@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { AppData, Member, Project, Allocation } from '../types';
-import { getNext13Weeks, formatDateShort } from '../utils';
-import { Plus, X, Trash2 } from 'lucide-react';
+import { AppData, Member, Project, Allocation, WEEK_COUNT } from '../types';
+import { getNext13Weeks, formatDateShort, getWeeksWithOffset } from '../utils';
+import { Plus, X, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface MatrixProps {
   data: AppData;
@@ -10,7 +10,8 @@ interface MatrixProps {
 }
 
 const Matrix: React.FC<MatrixProps> = ({ data, onUpdateAllocation }) => {
-  const weeks = getNext13Weeks();
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = current week, negative = past, positive = future
+  const weeks = getWeeksWithOffset(weekOffset, WEEK_COUNT);
 
   // We want to group rows by member.
   // For each member, we list projects they are assigned to, plus an option to add more.
@@ -131,8 +132,39 @@ const Matrix: React.FC<MatrixProps> = ({ data, onUpdateAllocation }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full max-h-[85vh]">
       <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-        <h2 className="text-lg font-bold text-slate-800">资源分配矩阵</h2>
-        <div className="text-xs text-slate-500">数值：0.1 = 10% 工时 | 显示未来 4 周</div>
+        <div className="flex items-center gap-4">
+          <h2 className="text-lg font-bold text-slate-800">资源分配矩阵</h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setWeekOffset(Math.max(weekOffset - 4, -52))}
+              className="p-1.5 hover:bg-slate-200 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed"
+              title="向前4周"
+            >
+              <ChevronLeft className="w-4 h-4 text-slate-600" />
+            </button>
+            <span className="text-sm text-slate-600 min-w-[120px] text-center">
+              {weekOffset === 0 ? '当前周' :
+               weekOffset < 0 ? `${Math.abs(weekOffset / 4)} 月前` :
+               `${Math.floor(weekOffset / 4)} 月后`}
+            </span>
+            <button
+              onClick={() => setWeekOffset(weekOffset + 4)}
+              className="p-1.5 hover:bg-slate-200 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed"
+              title="向后4周"
+            >
+              <ChevronRight className="w-4 h-4 text-slate-600" />
+            </button>
+            {weekOffset !== 0 && (
+              <button
+                onClick={() => setWeekOffset(0)}
+                className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition"
+              >
+                回到当前
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="text-xs text-slate-500">数值：0.1 = 10% 工时</div>
       </div>
       
       <div className="overflow-auto flex-1 hide-scrollbar">

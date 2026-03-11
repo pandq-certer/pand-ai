@@ -6,7 +6,8 @@ import Dashboard from './components/Dashboard';
 import Matrix from './components/Matrix';
 import Settings from './components/Settings';
 import Login from './components/Login';
-import { LayoutDashboard, Grid, Settings as SettingsIcon, Database, LogOut, User } from 'lucide-react';
+import Terminology from './components/Terminology';
+import { LayoutDashboard, Grid, Settings as SettingsIcon, Database, LogOut, User, HelpCircle } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { createScheduler, getNextSendDescription } from './utils/scheduler';
 
@@ -204,6 +205,18 @@ const MainApp: React.FC = () => {
             <SettingsIcon className="w-5 h-5" />
             <span className="font-medium">系统配置</span>
           </button>
+
+          <button
+            onClick={() => setCurrentView('terminology')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+              currentView === 'terminology'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50'
+                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <HelpCircle className="w-5 h-5" />
+            <span className="font-medium">术语说明</span>
+          </button>
         </nav>
 
         {/* User Info & Logout */}
@@ -253,6 +266,7 @@ const MainApp: React.FC = () => {
             )}
             {currentView === 'dashboard' && <Dashboard data={data} />}
             {currentView === 'settings' && <Settings data={data} onUpdate={handleSettingsUpdate} />}
+            {currentView === 'terminology' && <Terminology />}
           </div>
         </div>
       </main>

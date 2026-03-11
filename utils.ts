@@ -38,6 +38,19 @@ export const getWeeksAroundDate = (centerDate: Date, weekCount: number = 4): str
   return weeks;
 };
 
+// Generate weeks with a start offset (negative for past, positive for future) and duration
+export const getWeeksWithOffset = (startOffset: number, weekCount: number): string[] => {
+  const weeks: string[] = [];
+  const current = getMonday(new Date());
+
+  for (let i = startOffset; i < startOffset + weekCount; i++) {
+    const week = new Date(current);
+    week.setDate(current.getDate() + (i * 7));
+    weeks.push(week.toISOString().split('T')[0]);
+  }
+  return weeks;
+};
+
 // Format date for display (e.g., "Jan 05")
 export const formatDateShort = (isoString: string): string => {
   const date = new Date(isoString);

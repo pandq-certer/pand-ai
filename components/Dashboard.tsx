@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { AppData, Member, Project, WEEK_COUNT } from '../types';
 import { getNext13Weeks, calculateMemberLoad, findFreeDate, formatDateShort, getWeeksAroundDate } from '../utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { AlertCircle, CheckCircle, TrendingUp, Users, ChevronLeft, ChevronRight, Calendar, Download, Image } from 'lucide-react';
+import { AlertCircle, CheckCircle, TrendingUp, Users, ChevronLeft, ChevronRight, Calendar, Download, Image, HelpCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 
@@ -13,6 +13,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ data }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isExporting, setIsExporting] = useState(false);
+  const [showTerminology, setShowTerminology] = useState(false);
   const dashboardRef = useRef<HTMLDivElement>(null);
   const weeks = getWeeksAroundDate(selectedDate, WEEK_COUNT);
 
@@ -345,11 +346,143 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
 
   return (
     <div className="space-y-6" id="dashboard-content" ref={dashboardRef}>
+      {/* Terminology Modal */}
+      {showTerminology && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+              <h3 className="text-2xl font-bold text-slate-800">系统指标术语说明</h3>
+              <button
+                onClick={() => setShowTerminology(false)}
+                className="text-slate-400 hover:text-slate-600 transition"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-6 text-slate-700">
+              <section>
+                <h4 className="text-xl font-semibold text-slate-800 mb-3">FTE（Full-Time Equivalent）- 全职当量</h4>
+                <p className="mb-2"><strong>定义：</strong>FTE 是衡量工作量的标准单位，表示一个全职员工的工作量。</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li><strong>1.0 FTE</strong> = 1 个全职员工 100% 的工作时间</li>
+                  <li><strong>0.5 FTE</strong> = 半职员工 50% 的工作时间</li>
+                  <li><strong>2.0 FTE</strong> = 2 个全职员工的工作量</li>
+                </ul>
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm"><strong>系统中的应用：</strong></p>
+                  <ul className="list-disc pl-5 mt-2 text-sm space-y-1">
+                    <li>周期：以<strong>周</strong>为单位</li>
+                    <li>1.0 FTE = 一个人全职工作一周（5个工作日）</li>
+                    <li>例如：某人在 A 项目投入 0.3 FTE，表示他每周有 30% 的时间用于该项目</li>
+                  </ul>
+                </div>
+              </section>
+
+              <section>
+                <h4 className="text-xl font-semibold text-slate-800 mb-3">投入占比（Allocation Percentage）</h4>
+                <p className="mb-2"><strong>定义：</strong>某成员在特定项目中的投入占其<strong>总工作时间</strong>的百分比。</p>
+                <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                  <p className="text-sm"><strong>计算公式：</strong></p>
+                  <p className="text-sm mt-2 font-mono">投入占比 = (在该项目的投入量 ÷ 在所有项目的总投入量) × 100%</p>
+                </div>
+                <div className="mt-3 p-3 bg-slate-50 rounded-lg">
+                  <p className="text-sm"><strong>示例：</strong></p>
+                  <p className="text-sm mt-2">李四本周在数据库迁移项目投入 0.3 FTE，在系统优化项目投入 0.7 FTE，总投入 1.0 FTE</p>
+                  <ul className="list-disc pl-5 mt-2 text-sm space-y-1">
+                    <li>数据库迁移项目：(0.3 ÷ 1.0) × 100% = <strong>30%</strong></li>
+                    <li>系统优化项目：(0.7 ÷ 1.0) × 100% = <strong>70%</strong></li>
+                  </ul>
+                </div>
+              </section>
+
+              <section>
+                <h4 className="text-xl font-semibold text-slate-800 mb-3">本周投入 / 本周剩余</h4>
+                <p className="mb-2"><strong>本周投入：</strong>成员本周在所有项目中已分配的工作总量（单位：FTE）</p>
+                <p className="mb-2"><strong>本周剩余：</strong>成员本周还有多少可用时间（单位：FTE）</p>
+                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm"><strong>计算公式：</strong></p>
+                  <p className="text-sm mt-2 font-mono">本周剩余 = 1.0 - 本周投入</p>
+                </div>
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm font-semibold text-green-800">✓ 剩余 &gt; 0</p>
+                    <p className="text-sm mt-1">成员本周有空闲时间，可以接收新任务</p>
+                  </div>
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm font-semibold text-red-800">✗ 剩余 = 0</p>
+                    <p className="text-sm mt-1">成员本周已满负荷，无法接收新任务</p>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h4 className="text-xl font-semibold text-slate-800 mb-3">常见问题</h4>
+                <div className="space-y-3">
+                  <details className="group">
+                    <summary className="cursor-pointer font-semibold text-slate-700 hover:text-blue-600 transition">
+                      为什么用 1.0 表示 100%？
+                    </summary>
+                    <p className="mt-2 pl-4 text-sm text-slate-600">
+                      这是国际标准的人力资源计量单位。1.0 FTE 代表一个全职员工的标准工作时间，便于计算和比较工作量。
+                    </p>
+                  </details>
+                  <details className="group">
+                    <summary className="cursor-pointer font-semibold text-slate-700 hover:text-blue-600 transition">
+                      投入量可以是小数吗？
+                    </summary>
+                    <p className="mt-2 pl-4 text-sm text-slate-600">
+                      可以。例如 0.5 FTE 表示半职工作，0.25 FTE 表示每周 1 天的工作量。
+                    </p>
+                  </details>
+                  <details className="group">
+                    <summary className="cursor-pointer font-semibold text-slate-700 hover:text-blue-600 transition">
+                      为什么总和不等于 1.0？
+                    </summary>
+                    <p className="mt-2 pl-4 text-sm text-slate-600">
+                      理论上每个人的周投入总和应该等于 1.0（100%）。如果小于 1.0，说明还有空闲时间；如果大于 1.0，说明过度分配（需要调整）。
+                    </p>
+                  </details>
+                  <details className="group">
+                    <summary className="cursor-pointer font-semibold text-slate-700 hover:text-blue-600 transition">
+                      邮件中的百分比和 FTE 是什么关系？
+                    </summary>
+                    <p className="mt-2 pl-4 text-sm text-slate-600">
+                      邮件中显示的百分比 = FTE × 100%。例如：0.3 FTE = 30%，1.0 FTE = 100%
+                    </p>
+                  </details>
+                </div>
+              </section>
+
+              <div className="pt-4 border-t border-slate-200">
+                <p className="text-sm text-slate-500">
+                  详细说明请参考项目文档中的 <strong>TERMINOLOGY.md</strong>
+                </p>
+                <p className="text-sm text-slate-500 mt-1">
+                  如有疑问，请联系 <a href="mailto:pandq@chinacscs.com" className="text-blue-600 hover:underline">潘大全</a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header with Export Buttons */}
       <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">数据看板</h2>
-          <p className="text-slate-500 mt-1">查看团队的资源分配情况和工作负载</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">数据看板</h2>
+            <p className="text-slate-500 mt-1">查看团队的资源分配情况和工作负载</p>
+          </div>
+          <button
+            onClick={() => setShowTerminology(true)}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition"
+            title="查看术语说明"
+          >
+            <HelpCircle className="w-4 h-4" />
+            术语说明
+          </button>
         </div>
         <div className="flex gap-2">
           <button
