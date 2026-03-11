@@ -200,9 +200,7 @@ export function createScheduler(
       clearInterval(intervalId);
     }
 
-    // 立即检查一次
-    checkAndSend();
-
+    // 不再立即检查，而是等待第一个定时周期
     // 每分钟检查一次
     intervalId = window.setInterval(() => {
       checkAndSend();
@@ -225,6 +223,10 @@ export function createScheduler(
       if (dashboardRef?.current) {
         // 如果有 Dashboard 引用，使用它导出
         console.log('使用 Dashboard 引用导出图片...');
+
+        // 等待一小段时间确保 Dashboard 完全渲染
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         const html2canvas = (await import('html2canvas')).default;
         const canvas = await html2canvas(dashboardRef.current, {
           backgroundColor: '#ffffff',
@@ -237,6 +239,8 @@ export function createScheduler(
       } else {
         // 如果没有 Dashboard 引用，尝试直接查找元素
         console.log('尝试直接查找 Dashboard 元素...');
+        // 等待一小段时间确保页面加载完成
+        await new Promise(resolve => setTimeout(resolve, 500));
         dashboardImage = await exportDashboardForEmail();
       }
 
