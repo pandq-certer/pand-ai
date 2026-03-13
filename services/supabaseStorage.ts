@@ -19,7 +19,15 @@ export const loadData = async (): Promise<AppData> => {
     if (projectsResult.error) throw projectsResult.error;
     if (allocationsResult.error) throw allocationsResult.error;
 
-    const members: Member[] = membersResult.data || [];
+    const members: Member[] = (membersResult.data || [])
+      .filter(m => m.status !== 'deleted') // 过滤已删除的成员
+      .map(m => ({
+        id: m.id,
+        name: m.name,
+        role: m.role,
+        email: m.email,
+        status: m.status || 'active'
+      }));
     const projects: Project[] = (projectsResult.data || []).map(p => ({
       id: p.id,
       name: p.name,
@@ -121,12 +129,12 @@ export const saveData = async (data: AppData): Promise<void> => {
     const newMemberIds = new Set(data.members.map(m => m.id));
     const newProjectIds = new Set(data.projects.map(p => p.id));
 
-    // 2. 删除数据库中存在但新数据中不存在的成员
+    // 2. 逻辑删除数据库中存在但新数据中不存在的成员（更新状态为 deleted）
     const membersToDelete = [...existingMemberIds].filter(id => !newMemberIds.has(id));
     if (membersToDelete.length > 0) {
       const { error: deleteMembersError } = await supabase
         .from('members')
-        .delete()
+        .update({ status: 'deleted' })
         .in('id', membersToDelete);
       if (deleteMembersError) throw deleteMembersError;
     }
@@ -172,6 +180,45 @@ export const saveData = async (data: AppData): Promise<void> => {
     }
   } catch (error) {
     console.error('保存数据失败:', error);
+    throw error;
+  }
+};
+
+// 恢复已删除的成员（管理员功能）
+export const restoreDeletedMembers = async (memberIds: string[]): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('members')
+      .update({ status: 'active' })
+      .in('id', memberIds);
+
+    if (error) throw error;
+    console.log(`成功恢复 ${memberIds.length} 个成员`);
+  } catch (error) {
+    console.error('恢复成员失败:', error);
+    throw error;
+  }
+};
+
+// 获取所有已删除的成员（管理员功能）
+export const getDeletedMembers = async (): Promise<Member[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('members')
+      .select('*')
+      .eq('status', 'deleted');
+
+    if (error) throw error;
+
+    return (data || []).map(m => ({
+      id: m.id,
+      name: m.name,
+      role: m.role,
+      email: m.email,
+      status: m.status || 'deleted'
+    }));
+  } catch (error) {
+    console.error('获取已删除成员失败:', error);
     throw error;
   }
 };

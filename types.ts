@@ -3,6 +3,7 @@ export interface Member {
   name: string;
   role: string;
   email?: string; // 成员邮箱（可选）
+  status?: 'active' | 'deleted'; // 成员状态：活跃、已删除（逻辑删除）
 }
 
 export interface Project {
