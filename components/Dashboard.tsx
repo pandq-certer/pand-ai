@@ -372,7 +372,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
                 {/* Project Header */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <h4 className="text-base font-bold text-slate-800">{project.name}</h4>
                       <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
                         project.projectStatus === 'ongoing'
@@ -381,6 +381,12 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
                       }`}>
                         {project.projectStatus === 'ongoing' ? '进行中' : '已结项'}
                       </span>
+                      {project.projectManager && (
+                        <span className="flex items-center gap-1 text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded-full">
+                          <Users className="w-3 h-3" />
+                          <span className="font-medium">{project.projectManager}</span>
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-4 mt-2 text-sm">
                       <div>

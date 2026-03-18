@@ -18,10 +18,13 @@ const Settings: React.FC<SettingsProps> = ({ data, onUpdate }) => {
   const [newMemberRole, setNewMemberRole] = useState('');
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectManager, setNewProjectManager] = useState('');
   const [newProjectStatus, setNewProjectStatus] = useState<'ongoing' | 'completed'>('ongoing');
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [editingRole, setEditingRole] = useState('');
   const [editingEmail, setEditingEmail] = useState('');
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editingProjectManager, setEditingProjectManager] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailMessage, setEmailMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [newCustomEmail, setNewCustomEmail] = useState('');
@@ -223,9 +226,11 @@ const Settings: React.FC<SettingsProps> = ({ data, onUpdate }) => {
       name: newProjectName,
       status: 'active',
       projectStatus: newProjectStatus,
+      projectManager: newProjectManager.trim() || undefined,
     };
     onUpdate({ ...data, projects: [...data.projects, project] });
     setNewProjectName('');
+    setNewProjectManager('');
     setNewProjectStatus('ongoing');
   };
 
@@ -236,6 +241,27 @@ const Settings: React.FC<SettingsProps> = ({ data, onUpdate }) => {
         p.id === id ? { ...p, projectStatus } : p
       ),
     });
+  };
+
+  const startEditingProjectManager = (projectId: string, currentManager: string) => {
+    setEditingProjectId(projectId);
+    setEditingProjectManager(currentManager || '');
+  };
+
+  const saveProjectManager = (projectId: string) => {
+    onUpdate({
+      ...data,
+      projects: data.projects.map((p) =>
+        p.id === projectId ? { ...p, projectManager: editingProjectManager.trim() || undefined } : p
+      ),
+    });
+    setEditingProjectId(null);
+    setEditingProjectManager('');
+  };
+
+  const cancelEditingProjectManager = () => {
+    setEditingProjectId(null);
+    setEditingProjectManager('');
   };
 
   const toggleProjectStatus = (id: string) => {
@@ -465,53 +491,123 @@ const Settings: React.FC<SettingsProps> = ({ data, onUpdate }) => {
               <Plus className="w-5 h-5" />
             </button>
           </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="项目经理（可选）"
+              className="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-emerald-500 outline-none"
+              value={newProjectManager}
+              onChange={(e) => setNewProjectManager(e.target.value)}
+            />
+          </div>
         </div>
 
         <ul className="space-y-3">
-          {data.projects.map((project) => (
-            <li key={project.id} className={`flex justify-between items-center p-3 rounded-lg border ${project.status === 'archived' ? 'bg-slate-100 border-slate-200 opacity-75' : 'bg-slate-50 border-slate-100'}`}>
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className={`w-2 h-2 rounded-full ${project.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></div>
-                <div className="flex-1 min-w-0">
-                  <div className={`font-semibold truncate ${project.status === 'archived' ? 'text-slate-500 line-through' : 'text-slate-700'}`}>
-                    {project.name}
+          {data.projects.map((project) => {
+            const isEditingManager = editingProjectId === project.id;
+            return (
+              <li key={project.id} className={`p-3 rounded-lg border ${project.status === 'archived' ? 'bg-slate-100 border-slate-200 opacity-75' : 'bg-slate-50 border-slate-100'}`}>
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={`w-2 h-2 rounded-full ${project.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`font-semibold truncate ${project.status === 'archived' ? 'text-slate-500 line-through' : 'text-slate-700'}`}>
+                        {project.name}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`px-2 py-0.5 text-xs rounded-full ${(!project.projectStatus || project.projectStatus === 'ongoing') ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'} font-medium`}>
+                          {(!project.projectStatus || project.projectStatus === 'ongoing') ? '进行中' : '已结项'}
+                        </span>
+                        <span className={`px-2 py-0.5 text-xs rounded-full ${project.status === 'active' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'} font-medium`}>
+                          {project.status === 'active' ? '活跃' : '归档'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`px-2 py-0.5 text-xs rounded-full ${(!project.projectStatus || project.projectStatus === 'ongoing') ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'} font-medium`}>
-                      {(!project.projectStatus || project.projectStatus === 'ongoing') ? '进行中' : '已结项'}
-                    </span>
-                    <span className={`px-2 py-0.5 text-xs rounded-full ${project.status === 'active' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'} font-medium`}>
-                      {project.status === 'active' ? '活跃' : '归档'}
-                    </span>
+                  <div className="flex gap-2 items-center">
+                    <select
+                      className="px-2 py-1 text-xs border rounded-md focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+                      value={project.projectStatus || 'ongoing'}
+                      onChange={(e) => updateProjectStatus(project.id, e.target.value as 'ongoing' | 'completed')}
+                      title="更改项目状态"
+                    >
+                      <option value="ongoing">进行中</option>
+                      <option value="completed">已结项</option>
+                    </select>
+                    <button
+                      onClick={() => toggleProjectStatus(project.id)}
+                      className="text-slate-400 hover:text-indigo-600 p-1"
+                      title={project.status === 'active' ? '归档' : '激活'}
+                    >
+                      <Archive className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => removeProject(project.id)}
+                      className="text-slate-400 hover:text-red-600 p-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              </div>
-              <div className="flex gap-2 items-center">
-                <select
-                  className="px-2 py-1 text-xs border rounded-md focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
-                  value={project.projectStatus || 'ongoing'}
-                  onChange={(e) => updateProjectStatus(project.id, e.target.value as 'ongoing' | 'completed')}
-                  title="更改项目状态"
-                >
-                  <option value="ongoing">进行中</option>
-                  <option value="completed">已结项</option>
-                </select>
-                <button
-                  onClick={() => toggleProjectStatus(project.id)}
-                  className="text-slate-400 hover:text-indigo-600 p-1"
-                  title={project.status === 'active' ? '归档' : '激活'}
-                >
-                  <Archive className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => removeProject(project.id)}
-                  className="text-slate-400 hover:text-red-600 p-1"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </li>
-          ))}
+
+                {/* 项目经理显示和编辑 */}
+                <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-200">
+                  {isEditingManager ? (
+                    <div className="flex items-center gap-2 flex-1">
+                      <input
+                        type="text"
+                        value={editingProjectManager}
+                        onChange={(e) => setEditingProjectManager(e.target.value)}
+                        className="flex-1 px-2 py-1 text-xs border rounded focus:ring-2 focus:ring-emerald-500 outline-none"
+                        placeholder="项目经理名称"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveProjectManager(project.id);
+                          if (e.key === 'Escape') cancelEditingProjectManager();
+                        }}
+                      />
+                      <button
+                        onClick={() => saveProjectManager(project.id)}
+                        className="text-emerald-600 hover:text-emerald-700 p-1"
+                        title="保存"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={cancelEditingProjectManager}
+                        className="text-slate-400 hover:text-slate-600 p-1"
+                        title="取消"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {project.projectManager ? (
+                        <div className="flex items-center gap-2 flex-1">
+                          <User className="w-3 h-3 text-slate-400" />
+                          <span className="text-xs text-slate-600">{project.projectManager}</span>
+                          <button
+                            onClick={() => startEditingProjectManager(project.id, project.projectManager || '')}
+                            className="text-xs text-emerald-600 hover:text-emerald-700 ml-auto"
+                          >
+                            编辑
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => startEditingProjectManager(project.id, '')}
+                          className="text-xs text-slate-400 hover:text-emerald-600"
+                        >
+                          + 添加项目经理
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </li>
+            );
+          })}
           {data.projects.length === 0 && <p className="text-slate-400 text-sm italic">暂无项目。</p>}
         </ul>
       </div>

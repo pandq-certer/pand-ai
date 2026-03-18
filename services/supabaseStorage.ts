@@ -32,7 +32,8 @@ export const loadData = async (): Promise<AppData> => {
       id: p.id,
       name: p.name,
       status: p.status,
-      projectStatus: p.project_status
+      projectStatus: p.project_status,
+      projectManager: p.project_manager
     }));
     const allocations: Allocation[] = (allocationsResult.data || []).map(a => ({
       id: a.id,
@@ -168,7 +169,8 @@ export const saveData = async (data: AppData): Promise<void> => {
               id: project.id,
               name: project.name,
               status: project.status,
-              project_status: project.projectStatus
+              project_status: project.projectStatus,
+              project_manager: project.projectManager
             })
         )
       )

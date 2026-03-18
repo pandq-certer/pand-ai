@@ -11,6 +11,7 @@ export interface Project {
   name: string;
   status: 'active' | 'archived';
   projectStatus: 'ongoing' | 'completed'; // 项目状态：进行中、已结项
+  projectManager?: string; // 项目经理（可选）
 }
 
 export interface Allocation {
