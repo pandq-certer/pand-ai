@@ -24,11 +24,49 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Received email request')
+    console.log('=== 收到新的邮件请求 ===');
+    console.log('请求方法:', req.method);
+    console.log('请求头:', Object.fromEntries(req.headers.entries()));
 
-    const { to, subject, html, attachments }: EmailPayload = await req.json()
+    // 尝试读取请求体
+    let requestBody;
+    try {
+      const text = await req.text();
+      console.log('请求体长度:', text.length);
+      console.log('请求体前500字符:', text.substring(0, 500));
+      requestBody = JSON.parse(text);
+    } catch (e) {
+      console.error('解析请求体失败:', e);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
-    console.log('Email data:', { to, subject, hasAttachments: !!attachments })
+    const { to, subject, html, attachments }: EmailPayload = requestBody;
+
+    console.log('=== 解析后的数据 ===');
+    console.log('收件人:', to);
+    console.log('主题:', subject);
+    console.log('有HTML:', !!html);
+    console.log('HTML长度:', html?.length);
+    console.log('有附件:', !!attachments);
+    console.log('附件数量:', attachments?.length);
+
+    console.log('Email data:', { to, subject, hasAttachments: !!attachments });
+
+    // 验证附件
+    if (attachments && attachments.length > 0) {
+      console.log('📎 附件信息:');
+      attachments.forEach((att, index) => {
+        console.log(`附件 ${index + 1}:`, {
+          filename: att.filename,
+          encoding: att.encoding,
+          contentLength: att.content.length,
+          contentPreview: att.content.substring(0, 100) + '...'
+        });
+      });
+    }
 
     // Validate required fields
     if (!to || !Array.isArray(to) || to.length === 0) {

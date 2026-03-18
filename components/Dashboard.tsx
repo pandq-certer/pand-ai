@@ -1,8 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { AppData, Member, Project, WEEK_COUNT } from '../types';
 import { getNext13Weeks, calculateMemberLoad, findFreeDate, formatDateShort, getWeeksAroundDate } from '../utils';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { AlertCircle, CheckCircle, TrendingUp, Users, ChevronLeft, ChevronRight, Calendar, Download, Image, HelpCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Users, ChevronLeft, ChevronRight, Calendar, Download, Image, HelpCircle, Briefcase } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 
@@ -69,22 +68,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
     );
   };
 
-  // 2. Prepare Data for Stacked Bar Chart (Project Consumption)
-  const chartData = weeks.map(week => {
-    const point: any = { name: formatDateShort(week) };
-    data.projects.forEach(p => {
-      // Sum allocations for this project in this week
-      const total = data.allocations
-        .filter(a => a.projectId === p.id && a.weekDate === week)
-        .reduce((sum, a) => sum + a.value, 0);
-      if (total > 0) point[p.name] = parseFloat(total.toFixed(1));
-    });
-    return point;
-  });
-
-  const projectColors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
-
-  // 3. Bench / Free Resources Logic
+  // 2. Bench / Free Resources Logic
   const freeResources = data.members.map(m => {
     const freeDate = findFreeDate(m.id, data.allocations, weeks);
     return { member: m, date: freeDate };
@@ -338,6 +322,154 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
         }) && (
           <div className="text-center py-8 text-slate-400">
             暂无项目分配数据
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // 5. Project Member Allocation Statistics - Show members for each project
+  const renderProjectMemberStats = () => {
+    return (
+      <div className="space-y-4">
+        {data.projects
+          .filter(p => p.status === 'active')
+          .map(project => {
+            // Calculate all members who have allocations to this project
+            const memberStats = data.members
+              .map(member => {
+                const totalAllocation = weeks.reduce((sum, week) => {
+                  const allocation = data.allocations.find(
+                    a => a.memberId === member.id && a.projectId === project.id && a.weekDate === week
+                  );
+                  return sum + (allocation ? allocation.value : 0);
+                }, 0);
+
+                // Calculate weekly average
+                const weeklyAllocations = weeks.map(week => {
+                  const allocation = data.allocations.find(
+                    a => a.memberId === member.id && a.projectId === project.id && a.weekDate === week
+                  );
+                  return allocation ? allocation.value : 0;
+                });
+
+                return {
+                  member,
+                  total: totalAllocation,
+                  avgPerWeek: totalAllocation / weeks.length,
+                  weeklyAllocations
+                };
+              })
+              .filter(stat => stat.total > 0)
+              .sort((a, b) => b.total - a.total);
+
+            if (memberStats.length === 0) return null;
+
+            const projectTotalFTE = memberStats.reduce((sum, stat) => sum + stat.total, 0);
+
+            return (
+              <div key={project.id} className="bg-slate-50 rounded-xl p-4 border border-slate-200 hover:shadow-md transition-shadow">
+                {/* Project Header */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <h4 className="text-base font-bold text-slate-800">{project.name}</h4>
+                      <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
+                        project.projectStatus === 'ongoing'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-slate-200 text-slate-600'
+                      }`}>
+                        {project.projectStatus === 'ongoing' ? '进行中' : '已结项'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 mt-2 text-sm">
+                      <div>
+                        <span className="text-slate-500">参与人数：</span>
+                        <span className="font-semibold text-slate-700 ml-1">{memberStats.length} 人</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">总投入：</span>
+                        <span className="font-semibold text-indigo-700 ml-1">{projectTotalFTE.toFixed(2)} FTE</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Members List */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {memberStats.map((stat, idx) => (
+                    <div
+                      key={stat.member.id}
+                      className="bg-white rounded-lg p-3 border border-slate-100 hover:border-indigo-200 transition"
+                    >
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
+                          {stat.member.name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-slate-800 text-sm truncate">{stat.member.name}</div>
+                          <div className="text-xs text-slate-500 truncate">{stat.member.role}</div>
+                        </div>
+                      </div>
+
+                      {/* Allocation Info */}
+                      <div className="space-y-1.5 mt-3">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-500">4周总计</span>
+                          <span className="font-semibold text-indigo-700">{stat.total.toFixed(2)} FTE</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-500">平均每周</span>
+                          <span className="font-semibold text-slate-700">{stat.avgPerWeek.toFixed(2)} FTE</span>
+                        </div>
+
+                        {/* Weekly Breakdown Mini Chart */}
+                        <div className="mt-2 pt-2 border-t border-slate-100">
+                          <div className="flex items-center gap-0.5 h-2">
+                            {stat.weeklyAllocations.map((val, i) => {
+                              const intensity = Math.min(val / 1.0, 1.0);
+                              const bgColor = intensity === 0
+                                ? 'bg-slate-100'
+                                : intensity < 0.5
+                                  ? 'bg-blue-200'
+                                  : intensity < 0.8
+                                    ? 'bg-emerald-200'
+                                    : 'bg-red-200';
+                              return (
+                                <div
+                                  key={i}
+                                  className={`flex-1 rounded-sm ${bgColor}`}
+                                  style={{ opacity: intensity === 0 ? 0.3 : 0.8 + (intensity * 0.2) }}
+                                  title={`第${i + 1}周: ${val.toFixed(2)} FTE`}
+                                />
+                              );
+                            })}
+                          </div>
+                          <div className="flex justify-between mt-1">
+                            {weeks.slice(0, 4).map((week, i) => (
+                              <div key={i} className="text-[10px] text-slate-400">
+                                {formatDateShort(week)}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        {data.projects.filter(p => p.status === 'active').every(project => {
+          const hasMembers = data.members.some(member =>
+            weeks.some(week =>
+              data.allocations.some(a => a.memberId === member.id && a.projectId === project.id && a.weekDate === week && a.value > 0)
+            )
+          );
+          return !hasMembers;
+        }) && (
+          <div className="text-center py-8 text-slate-400">
+            暂无项目人员分配数据
           </div>
         )}
       </div>
@@ -603,36 +735,18 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
         {renderMemberProjectStats()}
       </div>
 
-      {/* Chart Card */}
-      <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-         <h3 className="text-lg font-bold text-slate-800 flex items-center mb-6">
-            <TrendingUp className="w-5 h-5 mr-2 text-blue-500" />
-            项目负载分布（FTE）
-         </h3>
-         <div className="h-[350px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-               <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
-                  <Tooltip 
-                    cursor={{fill: '#f8fafc'}}
-                    contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                  />
-                  <Legend iconType="circle" wrapperStyle={{paddingTop: '20px'}} />
-                  {data.projects.filter(p => p.status === 'active').map((p, idx) => (
-                    <Bar 
-                      key={p.id} 
-                      dataKey={p.name} 
-                      stackId="a" 
-                      fill={projectColors[idx % projectColors.length]} 
-                      radius={idx === data.projects.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                    />
-                  ))}
-               </BarChart>
-            </ResponsiveContainer>
-         </div>
+      {/* Project Member Allocation Statistics */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex items-center gap-3 mb-6">
+          <Briefcase className="w-5 h-5 text-orange-500" />
+          <div>
+            <h3 className="text-lg font-bold text-slate-800">项目人员投入统计</h3>
+            <p className="text-sm text-slate-500 mt-0.5">展示每个项目参与的数据库人员及投入情况（4周总计）</p>
+          </div>
+        </div>
+        {renderProjectMemberStats()}
       </div>
+
     </div>
   );
 };

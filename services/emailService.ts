@@ -223,6 +223,13 @@ export async function sendDashboardReport(
   const htmlContent = buildProjectManagerEmail(data);
 
   // 准备邮件负载 - 图片作为附件发送
+  const base64Data = dashboardImageBase64.split(',')[1]; // 移除 data:image/png;base64, 前缀
+
+  console.log('📧 准备发送邮件...');
+  console.log('收件人数量:', validEmails.length);
+  console.log('图片数据长度:', base64Data.length);
+  console.log('图片数据前100字符:', base64Data.substring(0, 100));
+
   const payload: EmailPayload = {
     to: validEmails,
     subject: `华北数据库团队资源规划报告 - ${new Date().toLocaleDateString('zh-CN')}`,
@@ -230,11 +237,19 @@ export async function sendDashboardReport(
     attachments: [
       {
         filename: 'dashboard.png',
-        content: dashboardImageBase64.split(',')[1], // 移除 data:image/png;base64, 前缀
+        content: base64Data,
         encoding: 'base64',
       },
     ],
   };
+
+  console.log('邮件负载:', {
+    to: payload.to,
+    subject: payload.subject,
+    hasAttachments: !!payload.attachments,
+    attachmentCount: payload.attachments?.length,
+    attachmentSize: payload.attachments?.[0]?.content.length
+  });
 
   return sendEmail(payload);
 }

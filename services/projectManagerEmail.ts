@@ -46,7 +46,8 @@ interface ProjectAllocation {
 function getProjectAllocations(data: AppData): ProjectAllocation[] {
   const { currentWeek } = getWeekDates();
 
-  return data.projects.map(project => {
+  return data.projects
+    .map(project => {
     // 本周分配
     const thisWeekMemberMap = new Map<string, {
       member: Member;
@@ -101,13 +102,24 @@ function getProjectAllocations(data: AppData): ProjectAllocation[] {
           allocationPercentage
         };
       })
-      .sort((a, b) => b.totalAllocation - a.totalAllocation);
+      .sort((a, b) => {
+        // 先按成员名称排序
+        const nameCompare = a.member.name.localeCompare(b.member.name, 'zh-CN');
+        if (nameCompare !== 0) return nameCompare;
+        // 如果成员名称相同，按投入量降序排序
+        return b.totalAllocation - a.totalAllocation;
+      });
 
     return {
       project,
       thisWeekAllocations: allocations
     };
-  }).filter(pa => pa.thisWeekAllocations.length > 0); // 过滤掉没有分配的项目
+  })
+  .filter(pa => pa.thisWeekAllocations.length > 0) // 过滤掉没有分配的项目
+  .sort((a, b) => {
+    // 按项目名称排序
+    return a.project.name.localeCompare(b.project.name, 'zh-CN');
+  });
 }
 
 /**
@@ -194,11 +206,60 @@ function getMembersAvailability(data: AppData): MemberAvailability[] {
 }
 
 /**
+ * 按人员统计参与的项目
+ */
+interface MemberProjectSummary {
+  member: Member;
+  thisWeekAllocation: number; // 本周总投入
+  thisWeekProjects: { projectName: string; allocation: number; percentage: number }[]; // 本周参与的项目
+}
+
+function getMemberProjectSummaries(data: AppData): MemberProjectSummary[] {
+  const { currentWeek } = getWeekDates();
+
+  return data.members.map(member => {
+    // 计算本周的总投入
+    const thisWeekAllocations = data.allocations.filter(
+      a => a.memberId === member.id && currentWeek.includes(a.weekDate)
+    );
+
+    const thisWeekAllocation = thisWeekAllocations.reduce((sum, a) => sum + a.value, 0);
+
+    // 本周参与的项目汇总
+    const thisWeekProjectMap = new Map<string, number>();
+    thisWeekAllocations.forEach(a => {
+      const project = data.projects.find(p => p.id === a.projectId);
+      if (project) {
+        const current = thisWeekProjectMap.get(project.name) || 0;
+        thisWeekProjectMap.set(project.name, current + a.value);
+      }
+    });
+
+    const thisWeekProjects = Array.from(thisWeekProjectMap.entries())
+      .map(([name, total]) => ({
+        projectName: name,
+        allocation: total,
+        percentage: total * 100 // 直接转换：0.2 = 20%
+      }))
+      .sort((a, b) => b.allocation - a.allocation); // 按投入量降序排序
+
+    return {
+      member,
+      thisWeekAllocation,
+      thisWeekProjects
+    };
+  })
+  .filter(summary => summary.thisWeekProjects.length > 0) // 过滤掉没有参与项目的成员
+  .sort((a, b) => a.member.name.localeCompare(b.member.name, 'zh-CN')); // 按成员名称排序
+}
+
+/**
  * 构建项目经理邮件内容
  */
 export function buildProjectManagerEmail(data: AppData): string {
   const projectAllocations = getProjectAllocations(data);
   const membersAvailability = getMembersAvailability(data);
+  const memberProjectSummaries = getMemberProjectSummaries(data);
 
   const emailContent = `
     <!DOCTYPE html>
@@ -428,6 +489,50 @@ export function buildProjectManagerEmail(data: AppData): string {
               `).join('')}
             </tbody>
           </table>
+        </div>
+
+        <!-- Section 3: 人员项目参与统计 -->
+        <div class="section">
+          <div class="section-title">
+            <span class="icon">👤</span>
+            本周人员项目参与统计
+          </div>
+
+          <div class="highlight-box">
+            💡 以下显示每位成员本周参与的项目及投入情况
+          </div>
+
+          ${memberProjectSummaries.length === 0 ? `
+            <div class="empty-state">
+              <div class="empty-state-icon">📭</div>
+              <p>当前暂无人员项目参与记录</p>
+            </div>
+          ` : `
+            <table class="allocation-table">
+              <thead>
+                <tr>
+                  <th>成员</th>
+                  <th>总投入</th>
+                  <th>参与项目及占比</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${memberProjectSummaries.map(summary => `
+                  <tr>
+                    <td><strong>${summary.member.name}</strong></td>
+                    <td>${(summary.thisWeekAllocation * 100).toFixed(0)}%</td>
+                    <td>
+                      ${summary.thisWeekProjects.map(p => `
+                        <span style="display: inline-block; margin-right: 12px; margin-bottom: 4px;">
+                          ${p.projectName} (${p.percentage.toFixed(0)}%)
+                        </span>
+                      `).join('')}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `}
         </div>
 
         <!-- Footer -->
