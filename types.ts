@@ -27,12 +27,17 @@ export interface EmailRecipient {
   enabled: boolean;
 }
 
+export interface CustomEmail {
+  email: string;
+  disabled?: boolean; // 是否禁用（禁用后不发送邮件但保留邮箱）
+}
+
 export type ScheduleFrequency = 'daily' | 'weekly' | 'monthly';
 
 export interface EmailConfig {
   enabled: boolean;
   recipients: EmailRecipient[]; // 接收邮件的成员列表
-  customEmails: string[]; // 自定义邮箱地址
+  customEmails: CustomEmail[]; // 自定义邮箱地址
   frequency: ScheduleFrequency; // 发送频率：daily(每天)、weekly(每周)、monthly(每月)
   scheduleTime: string; // 定时发送时间，格式：HH:MM
   scheduleDayOfWeek?: number; // 当 frequency 为 weekly 时，指定星期几（0=周日，1=周一，...，6=周六）

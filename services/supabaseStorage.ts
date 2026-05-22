@@ -1,5 +1,5 @@
 import { supabase } from '../supabaseClient';
-import { AppData, Member, Project, Allocation, EmailConfig, EmailRecipient } from '../types';
+import { AppData, Member, Project, Allocation, EmailConfig, EmailRecipient, CustomEmail } from '../types';
 import { generateId, getNext13Weeks } from '../utils';
 
 // 从数据库加载所有数据
@@ -51,7 +51,10 @@ export const loadData = async (): Promise<AppData> => {
         enabled: r.enabled
       }));
 
-      const customEmails: string[] = (customEmailsResult.data || []).map(e => e.email);
+      const customEmails: CustomEmail[] = (customEmailsResult.data || []).map(e => ({
+        email: e.email,
+        disabled: e.disabled || false
+      }));
 
       emailConfig = {
         enabled: emailConfigResult.data.enabled,
@@ -246,11 +249,12 @@ const saveEmailConfig = async (emailConfig: EmailConfig): Promise<void> => {
       .from('custom_emails')
       .select('*');
 
-    const existingEmailSet = new Set(existingCustomEmails?.map(e => e.email) || []);
+    const existingEmailMap = new Map(existingCustomEmails?.map(e => [e.email, e]) || []);
+    const newEmailSet = new Set(emailConfig.customEmails.map(e => e.email));
 
     // 删除不再存在的邮箱
     const emailsToDelete = existingCustomEmails
-      ?.filter(e => !emailConfig.customEmails.includes(e.email))
+      ?.filter(e => !newEmailSet.has(e.email))
       .map(e => e.id) || [];
 
     if (emailsToDelete.length > 0) {
@@ -260,15 +264,23 @@ const saveEmailConfig = async (emailConfig: EmailConfig): Promise<void> => {
         .in('id', emailsToDelete);
     }
 
-    // 添加新的自定义邮箱
-    const newEmails = emailConfig.customEmails.filter(email => !existingEmailSet.has(email));
-    for (const email of newEmails) {
-      await supabase
-        .from('custom_emails')
-        .insert({
-          id: generateId(),
-          email: email
-        });
+    // 添加或更新自定义邮箱
+    for (const customEmail of emailConfig.customEmails) {
+      const existing = existingEmailMap.get(customEmail.email);
+      if (existing) {
+        await supabase
+          .from('custom_emails')
+          .update({ disabled: customEmail.disabled || false })
+          .eq('id', existing.id);
+      } else {
+        await supabase
+          .from('custom_emails')
+          .insert({
+            id: generateId(),
+            email: customEmail.email,
+            disabled: customEmail.disabled || false
+          });
+      }
     }
 
     // 获取现有的收件人配置

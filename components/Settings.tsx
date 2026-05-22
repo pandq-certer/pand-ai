@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { AppData, Member, Project, EmailConfig } from '../types';
+import { AppData, Member, Project, EmailConfig, CustomEmail } from '../types';
 import { generateId } from '../utils';
-import { Trash2, Plus, User, Briefcase, Archive, Mail, Clock, Send, AlertCircle, CheckCircle } from 'lucide-react';
+import { Trash2, Plus, User, Briefcase, Archive, Mail, Clock, Send, AlertCircle, CheckCircle, Ban } from 'lucide-react';
 import { sendDashboardReport } from '../services/emailService';
 import { exportElementAsImage } from '../utils/export';
 import { getNextSendDescription, shouldSendEmail } from '../utils/scheduler';
@@ -127,13 +127,14 @@ const Settings: React.FC<SettingsProps> = ({ data, onUpdate }) => {
   };
 
   const addCustomEmail = () => {
-    if (!newCustomEmail.trim() || emailConfig.customEmails.includes(newCustomEmail.trim())) {
+    const trimmed = newCustomEmail.trim();
+    if (!trimmed || emailConfig.customEmails.some(e => e.email === trimmed)) {
       setNewCustomEmail('');
       return;
     }
     updateEmailConfig({
       ...emailConfig,
-      customEmails: [...emailConfig.customEmails, newCustomEmail.trim()],
+      customEmails: [...emailConfig.customEmails, { email: trimmed }],
     });
     setNewCustomEmail('');
   };
@@ -141,7 +142,16 @@ const Settings: React.FC<SettingsProps> = ({ data, onUpdate }) => {
   const removeCustomEmail = (email: string) => {
     updateEmailConfig({
       ...emailConfig,
-      customEmails: emailConfig.customEmails.filter(e => e !== email),
+      customEmails: emailConfig.customEmails.filter(e => e.email !== email),
+    });
+  };
+
+  const toggleCustomEmailDisabled = (email: string) => {
+    updateEmailConfig({
+      ...emailConfig,
+      customEmails: emailConfig.customEmails.map(e =>
+        e.email === email ? { ...e, disabled: !e.disabled } : e
+      ),
     });
   };
 
@@ -188,8 +198,8 @@ const Settings: React.FC<SettingsProps> = ({ data, onUpdate }) => {
           }
         });
 
-      // 添加自定义邮箱
-      recipientEmails.push(...emailConfig.customEmails);
+      // 添加未禁用的自定义邮箱
+      recipientEmails.push(...emailConfig.customEmails.filter(e => !e.disabled).map(e => e.email));
 
       if (recipientEmails.length === 0) {
         setEmailMessage({ type: 'error', text: '请先配置至少一个接收邮箱' });
@@ -761,15 +771,28 @@ const Settings: React.FC<SettingsProps> = ({ data, onUpdate }) => {
                 </button>
               </div>
               <ul className="space-y-1">
-                {emailConfig.customEmails.map((email) => (
-                  <li key={email} className="flex items-center justify-between p-2 bg-slate-50 rounded text-sm">
-                    <span className="text-slate-700">{email}</span>
-                    <button
-                      onClick={() => removeCustomEmail(email)}
-                      className="text-red-400 hover:text-red-600"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                {emailConfig.customEmails.map((customEmail) => (
+                  <li key={customEmail.email} className={`flex items-center justify-between p-2 rounded text-sm ${customEmail.disabled ? 'bg-slate-100' : 'bg-slate-50'}`}>
+                    <span className={customEmail.disabled ? 'text-slate-400 line-through' : 'text-slate-700'}>
+                      {customEmail.email}
+                      {customEmail.disabled && <span className="ml-2 text-xs text-slate-400">已禁用</span>}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleCustomEmailDisabled(customEmail.email)}
+                        className={customEmail.disabled ? 'text-green-400 hover:text-green-600' : 'text-slate-400 hover:text-slate-600'}
+                        title={customEmail.disabled ? '启用' : '禁用'}
+                      >
+                        <Ban className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => removeCustomEmail(customEmail.email)}
+                        className="text-red-400 hover:text-red-600"
+                        title="删除"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>

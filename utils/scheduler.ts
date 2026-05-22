@@ -158,8 +158,8 @@ export async function executeScheduledSend(
         // 所以我们需要修改函数签名或在调用时处理
       });
 
-    // 添加自定义邮箱
-    recipients.push(...emailConfig.customEmails);
+    // 添加未禁用的自定义邮箱
+    recipients.push(...emailConfig.customEmails.filter(e => !e.disabled).map(e => e.email));
 
     if (recipients.length === 0) {
       console.warn('没有配置收件人，跳过发送');
@@ -257,8 +257,8 @@ export function createScheduler(
           }
         });
 
-      // 添加自定义邮箱
-      recipientEmails.push(...emailConfig.customEmails);
+      // 添加未禁用的自定义邮箱
+      recipientEmails.push(...emailConfig.customEmails.filter(e => !e.disabled).map(e => e.email));
 
       if (recipientEmails.length === 0) {
         console.warn('没有配置收件人，跳过发送');
